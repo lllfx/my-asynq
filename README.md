@@ -14,13 +14,20 @@ brew install redis
 ## Quick start
 1. Clone this repository
 ```console
-git clone github.com/thanhtinhpas1/go-asynq-example.git
+git clone https://github.com/lllfx/my-asynq.git
 ```
 2. (Optional) Start redis
 ```console
+cd redis
 docker-compose up -d
 ```
-3. Install dependencies
+3. (Optional) Start mysql
+```console
+cd mysql
+docker-compose up -d
+
+```
+4. Install dependencies
 ```console
 go mod download
 ```
@@ -28,7 +35,7 @@ or Makefile
 ```console
 make pre_install
 ```
-3. Start worker
+5. Start worker
 ```console
 go run worker/main.go
 ```
@@ -36,7 +43,7 @@ or Makefile
 ```console
 make worker
 ```
-4. Start dashboard UI
+6. Start dashboard UI
 ```console
 go run dashboard/main.go
 ```
@@ -45,7 +52,7 @@ or Makefile
 make dash
 ```
 
-5. Start app-server
+7. Start app-server
 ```console
 go run app/server.go
 ```
