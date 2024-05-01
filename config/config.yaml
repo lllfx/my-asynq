@@ -19,9 +19,9 @@ database:
     stdout: true
 
   default:
-    link: "mysql:root:UA3i)uwr@tcp(xxxxxx:13306)/task"
+    link: "mysql:root:UA3i)uwr@tcp(159.75.251.52:13306)/task"
     debug: true
 
 redis:
-  addr: "xxxxxxxx:6379"
+  addr: "159.75.251.52:6379"
   password: "HhsafCedAhtm"

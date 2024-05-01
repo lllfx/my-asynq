@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	_ "github.com/gogf/gf/contrib/drivers/mysql/v2"
+	"github.com/gogf/gf/v2/database/gdb"
 	"github.com/gogf/gf/v2/frame/g"
 	"github.com/hibiken/asynq"
 	"my-asynq/internal/dao"
@@ -30,8 +31,7 @@ func GetRedisClientOpt(ctx context.Context) asynq.RedisClientOpt {
 		Password: g.Cfg().MustGet(ctx, "redis.password", "").String()}
 }
 
-func EnqueueTask(ctx context.Context, task *asynq.Task, opts ...asynq.Option) (*asynq.TaskInfo, error) {
-	//写表
+func enqueueTask(ctx context.Context, task *asynq.Task, opts ...asynq.Option) (*asynq.TaskInfo, error) {
 	client := asynq.NewClient(GetRedisClientOpt(ctx))
 	defer func(client *asynq.Client) {
 		err := client.Close()
@@ -44,24 +44,62 @@ func EnqueueTask(ctx context.Context, task *asynq.Task, opts ...asynq.Option) (*
 		g.Log().Error(ctx, err)
 		return nil, err
 	}
-	//fmt.Println(task.Type(), task.Payload())
-	taskInfoByte, err := json.Marshal(taskInfo)
-	if err != nil {
-		g.Log().Error(ctx, err)
-		return nil, err
-	}
-	_, err = dao.Task.Ctx(ctx).Data(&entity.Task{
-		TaskType:    task.Type(),
-		TaskPayload: string(task.Payload()),
-		TaskInfo:    string(taskInfoByte),
-		TaskId:      taskInfo.ID,
-		TaskStatus:  int(TASK_STATUS_WAITING),
-	}).Insert()
-	if err != nil {
-		g.Log().Error(ctx, err)
-		return nil, err
-	}
 	return taskInfo, nil
+}
+func EnqueueTask(ctx context.Context, task *asynq.Task, opts ...asynq.Option) (*asynq.TaskInfo, error) {
+	//先写表
+	var resTaskInfo *asynq.TaskInfo
+	err := dao.Task.Ctx(ctx).Transaction(ctx, func(ctx context.Context, tx gdb.TX) error {
+		id, err := tx.Ctx(ctx).Model(dao.Task.Table()).Data(&g.Map{
+			dao.Task.Columns().TaskType:    task.Type(),
+			dao.Task.Columns().TaskPayload: string(task.Payload()),
+			dao.Task.Columns().TaskInfo:    "",
+			dao.Task.Columns().TaskId:      "",
+			dao.Task.Columns().TaskStatus:  int(TASK_STATUS_INVALID),
+		}).FieldsEx(dao.Task.Columns().Id).InsertAndGetId()
+		if err != nil {
+			g.Log().Error(ctx, err)
+			return err
+		}
+		taskInfo, err := enqueueTask(ctx, task, opts...)
+		if err != nil {
+			g.Log().Error(ctx, err)
+			_, err1 := tx.Ctx(ctx).Model(dao.Task.Table()).Data(&g.Map{
+				dao.Task.Columns().ErrMsg:     err.Error(),
+				dao.Task.Columns().TaskStatus: int(TASK_STATUS_INVALID),
+			}).Where(dao.Task.Columns().Id, id).Update()
+			if err1 != nil {
+				g.Log().Error(ctx, err1)
+				return err1
+			}
+			//保留这个错误记录
+		} else {
+			resTaskInfo = taskInfo
+			taskInfoByte, err := json.Marshal(taskInfo)
+			if err != nil {
+				g.Log().Error(ctx, err)
+			}
+			taskInfoStr := ""
+			if taskInfoByte != nil {
+				taskInfoStr = string(taskInfoByte)
+			}
+			_, err1 := tx.Ctx(ctx).Model(dao.Task.Table()).Data(&g.Map{
+				dao.Task.Columns().TaskInfo:   taskInfoStr,
+				dao.Task.Columns().TaskId:     taskInfo.ID,
+				dao.Task.Columns().TaskStatus: int(TASK_STATUS_WAITING),
+			}).Where(dao.Task.Columns().Id, id).Update()
+			if err1 != nil {
+				g.Log().Error(ctx, err1)
+				return err1
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		g.Log().Error(ctx, err)
+		return nil, err
+	}
+	return resTaskInfo, nil
 }
 
 type TaskHandler struct {

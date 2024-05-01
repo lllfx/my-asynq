@@ -10,7 +10,7 @@ import (
 
 // Task is the golang structure for table task.
 type Task struct {
-	Id          uint        `json:"id"          orm:"id"           ` // task ID
+	Id          uint        `json:"id"          orm:"id"           ` // id
 	TaskType    string      `json:"taskType"    orm:"task_type"    ` // task Type
 	TaskPayload string      `json:"taskPayload" orm:"task_payload" ` // task Payload
 	TaskId      string      `json:"taskId"      orm:"task_id"      ` // task id

@@ -12,7 +12,7 @@ import (
 // Task is the golang structure of table task for DAO operations like Where/Data.
 type Task struct {
 	g.Meta      `orm:"table:task, do:true"`
-	Id          interface{} // task ID
+	Id          interface{} // id
 	TaskType    interface{} // task Type
 	TaskPayload interface{} // task Payload
 	TaskId      interface{} // task id

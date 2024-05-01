@@ -20,7 +20,7 @@ type TaskDao struct {
 
 // TaskColumns defines and stores column names for table task.
 type TaskColumns struct {
-	Id          string // task ID
+	Id          string // id
 	TaskType    string // task Type
 	TaskPayload string // task Payload
 	TaskId      string // task id
